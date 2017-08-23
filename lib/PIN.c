@@ -1,62 +1,63 @@
 #include "PIN.h"
 
 PIN
-setup (int id, int mode)
+get_pin (int id, int mode)
 {
-	PIN p = malloc(sizeof(PIN));
+  PIN p = malloc(sizeof(PIN));
 
-	assert(p);
+  assert(p);
 
-	if (map_peripheral(&gpio) == -1)
-	 {
-		 fprintf(stderr, "Failed to map: permission denied!\n");
-		 exit(1);
-	 }
+  p->id = id;
+  p->status = GET_GPIO(id);
 
-	p->id = id;
-	p->status = LOW;
+  switch (mode)
+  {
+    case INPUT:
+      INP_GPIO(id);
+      p->mode = INPUT;
+      break;
+    case OUTPUT:
+      p->mode = OUTPUT;
+      INP_GPIO(id);
+      OUT_GPIO(id);
+      break;
+  }
 
-	switch (mode)
-	 {
-		 case INPUT:
-			 p->mode = INPUT;
-			 break;
-		 case OUTPUT:
-			 p->mode = OUTPUT;
-			 INP_GPIO(id);
-			 OUT_GPIO(id);
-			 break;
-	 }
-
-	return p;	
+  return p;	
 }
 
 int
-change_status (PIN p, int status)
+setup_pin (PIN p, int status)
 {
-	if (p->status == status)
-	 {
-		 return 0;
-	 }
+  if (p->status == status)
+   {
+     return 0;
+   }
 
-	switch (status)
-	 {
-		 case HIGH: 
-			 GPIO_SET = 1 << p->id;
-			 break;
-		 case LOW: 
-			 GPIO_CLR = 1 << p->id;
-			 break;
-	 }
+  switch (status)
+   {
+     case HIGH: 
+       GPIO_SET = 1 << p->id;
+       break;
+     case LOW: 
+       GPIO_CLR = 1 << p->id;
+       break;
+   }
 
-	p->status = status;
+  p->status = GET_GPIO(p->id);
 
-	return 1;
+  return 1;
 }
 
 void
-clean_up (PIN p)
+cleanup_pin (PIN p)
 {
-	free(p);
-	unmap_peripheral(&gpio);
+  if (GET_GPIO(p->id) == HIGH)
+   {
+     GPIO_CLR = 1 << p->id;
+   }
+
+  free(p);
 }
+
+/* XXX EOF XXX */

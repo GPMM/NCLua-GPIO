@@ -13,7 +13,8 @@ typedef struct pin_t {
 	int status;
 } *PIN;
 
-PIN setup (int id, int mode);
-int change_status(PIN p, int status);
-void clean_up (PIN p);
-int main ();
+PIN get_pin (int id, int mode);
+int setup_pin  (PIN p, int status);
+void cleanup_pin (PIN p);
+
+/* XXX EOF XXX */

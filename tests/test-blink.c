@@ -2,44 +2,47 @@
 #include <getopt.h>
 
 static struct option long_options[] = {
-	{ "pin",		required_argument,	NULL,		'p' },
-	{ "delay",	required_argument,	NULL,		'd' },
-	{ "repeat",	required_argument,	NULL,		'r' },
-	{	0, 				0, 									0,		 	 0 	}
+  { "pin",		required_argument,	NULL,		'p' },
+  { "delay",	required_argument,	NULL,		'd' },
+  { "repeat",	required_argument,	NULL,		'r' },
+  {	0, 				0, 									0,		 	 0 	}
 };
 
-int
+  int
 main(int argc, char **argv)
 {
-	int opt, pin, delay, repeat, i;
+  init_gpio();
 
-	while ((opt = getopt_long(argc, argv, "p:d:r:", long_options, NULL)) != -1)
+  int opt, pin, delay, repeat, i;
+
+  while ((opt = getopt_long(argc, argv, "p:d:r:", long_options, NULL)) != -1)
    {
-		switch(opt)
-		 {
-			 case 'p':
-				 pin = atoi(optarg);
-				 break;
-			 case 'd':
-				 delay = atoi(optarg);
-				 break;
-			 case 'r':
-				 repeat = atoi(optarg);
-				 break;
-		 }
-	 }
+     switch(opt)
+      {
+        case 'p':
+          pin = atoi(optarg);
+          break;
+        case 'd':
+          delay = atoi(optarg);
+          break;
+        case 'r':
+          repeat = atoi(optarg);
+          break;
+      }
+   }
 
-	PIN p = setup(pin, OUTPUT);
+  PIN p = get_pin(pin, OUTPUT);
 
-	for (i = 0; i < repeat; i++)
-	 {
-		 change_status(p, HIGH);
-		 sleep(delay);
-		 change_status(p, LOW);
-		 sleep(delay);
-	 }
+  for (i = 0; i < repeat; i++)
+   {
+     setup_pin(p, HIGH);
+     sleep(delay);
+     setup_pin(p, LOW);
+     sleep(delay);
+   }
 
-	clean_up(p);
+  cleanup_pin(p);
+  close_gpio();
 
-	return 0;
+  return 0;
 }
