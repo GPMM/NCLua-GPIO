@@ -2,10 +2,10 @@
 #include <getopt.h>
 
 static struct option long_options[] = {
-  { "pin",		required_argument,	NULL,		'p' },
-  { "delay",	required_argument,	NULL,		'd' },
-  { "repeat",	required_argument,	NULL,		'r' },
-  {	0, 				0, 									0,		 	 0 	}
+  { "pin",      required_argument,    NULL,    'p' },
+  { "delay",    required_argument,    NULL,    'd' },
+  { "repeat",   required_argument,    NULL,    'r' },
+  {  0,         0,                    0,        0  }
 };
 
   int
