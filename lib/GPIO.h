@@ -1,46 +1,46 @@
 /*
 
- * Raspberry PI 3 pin mapping *
-   _________________________
-   |            |           |
-   |    3.3V    |     5V    |
-   |____________|___________|
-   |            |           |
-   |   GPIO2    |     5V    |
-   |____________|___________|
-   |            |           |
-   |   GPIO3    |    GND    |
-   |____________|___________|
-   |            |           |
-   |   GPIO4    |     TX    |
-   |____________|___________|
-   |            |           |
-   |     GND    |     RX    |
-   |____________|___________|
-   |            |           |
-   |   GPIO17   |   GPIO18  |
-   |____________|___________|
-   |            |           |
-   |   GPIO27   |    GND    |
-   |____________|___________|
-   |            |           |
-   |   GPIO22   |   GPIO23  |
-   |____________|___________|
-   |            |           |
-   |    3.3V    |   GPIO24  |
-   |____________|___________|
-   |            |           |
-   |   GPIO10   |    GND    |
-   |____________|___________|
-   |            |           |
-   |   GPIO9    |   GPIO25  |
-   |____________|___________|
-   |            |           |
-   |   GPIO11   |   GPIO8   |
-   |____________|___________|
-   |            |           |
-   |    GND     |   GPIO7   |
-   |____________|___________|
+ * Raspberry PI B+ pin mapping *    * Raspberry PI A/B pin mapping *
+   _________________________           _________________________
+   |            |           |          |            |           |
+   |    3.3V    |     5V    |          |    3.3V    |     5V    |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO2    |     5V    |          |   GPIO2    |     5V    |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO3    |    GND    |          |   GPIO3    |    GND    |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO4    |     TX    |          |   GPIO4    |     TX    |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |     GND    |     RX    |          |     GND    |     RX    |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO17   |   GPIO18  |          |   GPIO17   |   GPIO18  |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO27   |    GND    |          |   GPIO27   |    GND    |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO22   |   GPIO23  |          |   GPIO22   |   GPIO23  |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |    3.3V    |   GPIO24  |          |    3.3V    |   GPIO24  |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO10   |    GND    |          |   GPIO10   |    GND    |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO9    |   GPIO25  |          |   GPIO9    |   GPIO25  |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |   GPIO11   |   GPIO8   |          |   GPIO11   |   GPIO8   |
+   |____________|___________|          |____________|___________|
+   |            |           |          |            |           |
+   |    GND     |   GPIO7   |          |    GND     |   GPIO7   |
+   |____________|___________|          |____________|___________|
    |            |           |
    |    RSVD    |   RSVD    |
    |____________|___________|
@@ -71,8 +71,10 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define BCM2708_PERI_BASE        0x3F000000
-#define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
+#define BCM2708_PERI_BASE        0x20000000
+#define BCM2709_PERI_BASE        0x3F000000
+#define GPIO_BASE                (BCM2709_PERI_BASE + 0x200000) /* GPIO controller */
+#define GPIO_BASE_OFFSET         0x200000
 
 #define BLOCK_SIZE (4*1024)
 
@@ -88,17 +90,22 @@
 #define GPIO_PULL *(gpio.addr+37) // Pull up/pull down
 #define GPIO_PULLCLK0 *(gpio.addr+38) // Pull up/pull down clock
 
-typedef struct bcm2835_peripheral_t {
-  unsigned long addr_p;
-  int mem_fd;
+/* TODO Add other models revision code TODO */
+#define REV_UNDEF   0x000000
+#define REV_RPI3    0xa22082
+
+typedef struct bcm_peripheral_t {
   void *map;
   volatile unsigned int *addr;
-} bcm2835_peripheral;
+} bcm_peripheral;
 
-extern bcm2835_peripheral gpio;
+extern bcm_peripheral gpio;
 
-int map_peripheral (bcm2835_peripheral *p);
-void unmap_peripheral (bcm2835_peripheral *p);
+int detect_by_device_tree (unsigned int *peri_base);
+int detect_by_cpu_info (unsigned int *peri_base);
+int detect_gpio_base (off_t *gpio_base);
+int map_peripheral ();
+void unmap_peripheral ();
 void init_gpio ();
 void close_gpio ();
 
