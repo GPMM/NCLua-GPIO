@@ -96,10 +96,10 @@ luaL_Reg funcs[] = {
   { NULL,       NULL }
 };
 
-int luaopen_lgpio (lua_State *L);
+int luaopen_nclua_lgpio (lua_State *L);
 
 int
-luaopen_lgpio (lua_State *L)
+luaopen_nclua_lgpio (lua_State *L)
 {
   init_gpio();
   luaL_newmetatable(L, "lgpio");

@@ -1,4 +1,4 @@
-#include "../lib/PIN.h"
+#include "PIN.h"
 #include <getopt.h>
 
 static struct option long_options[] = {

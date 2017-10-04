@@ -44,11 +44,11 @@ main(int argc, char **argv)
 
      if(!data)
       {
-        printf("button pressed %lu\n", data);
+        printf("button %d pressed %lu\n", pin, data);
       }
      else
       {
-        printf("button released %lu\n", data);
+        printf("button %d released %lu\n", pin, data);
       }
 
      sleep(1);
