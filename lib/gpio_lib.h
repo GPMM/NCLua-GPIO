@@ -63,7 +63,7 @@
    |    GND     |   GPIO21  |
    |____________|___________|
 
- */
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,28 +78,34 @@
 
 #define BLOCK_SIZE (4*1024)
 
-#define INP_GPIO(g) *(gpio.addr+((g)/10)) &= ~(7<<(((g)%10)*3))
-#define OUT_GPIO(g) *(gpio.addr+((g)/10)) |=  (1<<(((g)%10)*3))
-#define SET_GPIO_ALT(g,a) *(gpio.addr+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)<<(((g)%10)*3))
+#define INP_GPIO(g) *(io.addr+((g)/10)) &= ~(7<<(((g)%10)*3))
+#define OUT_GPIO(g) *(io.addr+((g)/10)) |=  (1<<(((g)%10)*3))
+#define SET_GPIO_ALT(g,a) *(io.addr+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)<<(((g)%10)*3))
 
-#define GPIO_SET *(gpio.addr+7)  // sets   bits which are 1 ignores bits which are 0
-#define GPIO_CLR *(gpio.addr+10) // clears bits which are 1 ignores bits which are 0
+#define GPIO_SET *(io.addr+7)  // sets   bits which are 1 ignores bits which are 0
+#define GPIO_CLR *(io.addr+10) // clears bits which are 1 ignores bits which are 0
 
-#define GET_GPIO(g) (*(gpio.addr+13)&(1<<g)) // 0 if LOW, (1<<g) if HIGH
+#define GET_GPIO(g) (*(io.addr+13)&(1<<g)) // 0 if LOW, (1<<g) if HIGH
 
-#define GPIO_PULL *(gpio.addr+37) // Pull up/pull down
-#define GPIO_PULLCLK0 *(gpio.addr+38) // Pull up/pull down clock
+#define GPIO_PULL *(io.addr+37) // Pull up/pull down
+#define GPIO_PULLCLK0 *(io.addr+38) // Pull up/pull down clock
 
 /* TODO Add other models revision code TODO */
 #define REV_UNDEF   0x000000
 #define REV_RPI3    0xa22082
+
+#define INPUT 0
+#define OUTPUT 1
+
+#define LOW 0
+#define HIGH 1
 
 typedef struct bcm_peripheral_t {
   void *map;
   volatile unsigned int *addr;
 } bcm_peripheral;
 
-extern bcm_peripheral gpio;
+extern bcm_peripheral io;
 
 int detect_by_device_tree (unsigned int *peri_base);
 int detect_by_cpu_info (unsigned int *peri_base);

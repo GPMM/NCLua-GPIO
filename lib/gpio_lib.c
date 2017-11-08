@@ -1,6 +1,6 @@
-#include "GPIO.h"
+#include "gpio_lib.h"
 
-bcm_peripheral gpio;
+bcm_peripheral io;
 
 int
 detect_by_device_tree (unsigned int *peri_base)
@@ -157,7 +157,7 @@ unmap_peripheral (bcm_peripheral *p)
 void
 init_gpio ()
 {
-  if (map_peripheral(&gpio) == -1)
+  if (map_peripheral(&io) == -1)
   {
     fprintf(stderr, "Error: permission denied!\n");
     exit(EXIT_FAILURE);
@@ -167,7 +167,7 @@ init_gpio ()
 void
 close_gpio ()
 {
-  unmap_peripheral(&gpio);
+  unmap_peripheral(&io);
 }
 
 /* XXX EOF XXX */

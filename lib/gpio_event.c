@@ -1,44 +1,11 @@
-#include <pthread.h>
-#include <sys/epoll.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/time.h>
-#include <string.h>
-#include <signal.h>
-
-#define IN   0
-#define OUT  1
-
-typedef enum _edge_t {
-  EDGE_ERR = -1,
-  NONE,
-  RISING,
-  FALLING,
-  BOTH
-} edge_t;
-
-typedef struct _gpio_t {
-  unsigned int gpio;
-  int fd;
-  edge_t edge;
-  int initial_thread;
-  int thread_added;
-  void (*callback) (unsigned int gpio, int value);
-} gpio_t;
-
-typedef struct _gpio_list_t {
-  gpio_t *current;
-  struct _gpio_list_t *next;
-} gpio_list_t; 
+#include "gpio_event.h"
 
 int epfd = -1;
 pthread_t thread;
 gpio_list_t *gpio_list = NULL;
+evt_queue_t *evt_queue = NULL;
 volatile int thread_running = 0;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 int
 export (unsigned int gpio)
@@ -202,8 +169,6 @@ add_to_list (gpio_t *gpio)
   return 0;
 }
 
-
-
 gpio_t *
 search_list (unsigned int gpio)
 {
@@ -243,7 +208,10 @@ open_gpio_file (unsigned int gpio)
 }
 
 gpio_t *
-new_gpio (unsigned int gpio, int direction, edge_t edge, void (*callback) (unsigned int gpio, int value))
+new_gpio (unsigned int gpio,
+          int direction,
+          edge_t edge,
+          void (*callback) (unsigned int gpio, int value))
 {
   gpio_t *new;
 
@@ -257,6 +225,7 @@ new_gpio (unsigned int gpio, int direction, edge_t edge, void (*callback) (unsig
   }
 
   new->gpio = gpio;
+  new->value = -1;
 
   if (export(gpio) == -1)
   {
@@ -365,6 +334,9 @@ epoll_loop (void *arg)
 
   thread_running = 1;
 
+  n = 0;
+  value = 0; 
+
   while (thread_running)
   {
     n = epoll_wait(epfd, &ev, 1, -1);
@@ -388,7 +360,14 @@ epoll_loop (void *arg)
       }
 
       value = atoi(&buffer);
-      g->callback(g->gpio, value);
+
+      if (g->value == value)
+      {
+        continue;
+      }
+
+      g->value = value;
+      g->callback(g->gpio, g->value);
     }
     else if (n == -1)
     {
@@ -406,10 +385,11 @@ epoll_loop (void *arg)
 }
 
 int
-add_gpio_event (unsigned int gpio, edge_t edge, void (*callback) (unsigned int gpio, int value))
+add_gpio_event (unsigned int gpio,
+                edge_t edge,
+                void (*callback) (unsigned int gpio, int value))
 {
   gpio_t *g;
-  pthread_t thread;
   struct epoll_event ev;
 
   g = search_list(gpio);
@@ -461,36 +441,137 @@ add_gpio_event (unsigned int gpio, edge_t edge, void (*callback) (unsigned int g
   return 0;
 }
 
-void gpio_callback (unsigned int gpio, int value)
+evt_queue_t *
+new_queue ()
 {
-    printf("GPIO %d Value %d\n", gpio, value);
-}
+  evt_queue_t *new;
 
-sig_atomic_t volatile running = 1;
+  new = NULL;
 
-void
-sig_handler (int signum)
-{
-  if(signum == SIGINT)
-   {
-     running = 0;
-   }
-}
+  new = (evt_queue_t *) malloc(sizeof(evt_queue_t));
 
-int
-main(int argc, char **argv)
-{
-  signal(SIGINT, &sig_handler);
-
-  add_gpio_event(25, BOTH, gpio_callback);
-
-  while (running)
+  if (new == NULL)
   {
-    sleep(1);
-    if (thread_running == 0)
-      break;
+    fprintf(stderr, "Malloc error\n");
+    return NULL;
   }
 
-  remove_gpio_event(25);
-  return EXIT_SUCCESS;
+  new->head = NULL;
+  new->tail = NULL;
+  new->size = 0;
+
+  return new;
 }
+
+gpio_evt_t *
+new_gpio_evt (unsigned int gpio, int value)
+{
+  gpio_evt_t *new;
+
+  new = NULL;
+
+  new = (gpio_evt_t *) malloc(sizeof(gpio_evt_t));
+
+  if (new == NULL)
+  {
+    fprintf(stderr, "Malloc error\n");
+    return NULL;
+  }
+
+  new->gpio = gpio;
+  new->value = value;
+  new->next = NULL;
+
+  return new;
+}
+
+void
+enqueue (gpio_evt_t *gpio_evt)
+{
+  evt_queue_t *queue;
+
+  pthread_mutex_lock(&lock);
+  queue = evt_queue;
+
+  if (queue == NULL)
+  {
+    queue = new_queue();
+    assert(queue);
+    queue->head = gpio_evt;
+    evt_queue = queue;
+  }
+  else if (queue->size == MAX_SIZE)
+  {
+    pthread_mutex_unlock(&lock);
+    free(gpio_evt);
+    return;
+  }
+  else if (queue->tail == NULL)
+  {
+    queue->head = gpio_evt;
+  }
+  else
+  {
+    queue->tail->next = gpio_evt;
+  }
+
+  queue->tail = gpio_evt;
+  queue->size++;
+  pthread_mutex_unlock(&lock);
+}
+
+gpio_evt_t *
+dequeue ()
+{
+  gpio_evt_t *evt;
+
+  pthread_mutex_lock(&lock);
+
+  if (evt_queue == NULL || evt_queue->head == NULL)
+  {
+    pthread_mutex_unlock(&lock);
+    return NULL;
+  }
+
+  evt = evt_queue->head;
+  evt_queue->tail = evt->next ? evt_queue->tail : NULL;
+  evt_queue->head = evt->next ? evt->next : NULL;
+  evt_queue->size--;
+
+  pthread_mutex_unlock(&lock);
+
+  evt->next = NULL;
+
+  return evt;
+}
+
+void
+free_all()
+{
+  gpio_evt_t *evt;
+  gpio_list_t *list, *aux;
+
+  thread_running = 0;
+
+  if (gpio_list != NULL)
+  {
+    list = gpio_list;
+
+    while (list != NULL)
+    {
+      aux = list;
+      list = aux->next;
+      free(aux->current);
+      free(aux);
+    }
+  }
+
+  while ((evt = dequeue()) != NULL)
+  {
+    free(evt);
+  }
+
+  free(evt_queue);
+}
+
+/* XXX EOF XXX */
